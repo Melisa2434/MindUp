@@ -1,98 +1,176 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import React, { useEffect, useState } from 'react';
+import { SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import CategoryScreen from '../CategoryScreen';
+import GameScreen from '../GameScreen';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export interface Category {
+  id: string;
+  title: { tr: string; en: string };
+  color: string;
+  words: { tr: string[]; en: string[] };
+}
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [language, setLanguage] = useState<'tr' | 'en'>('tr');
+  const [isTeamMode, setIsTeamMode] = useState(false);
+  const [teams, setTeams] = useState({ t1: '', t2: '' });
+  const [maxRounds, setMaxRounds] = useState(3);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // Oyunun ilerleyişini takip eden yeni state'ler
+  const [currentRound, setCurrentRound] = useState(1);
+  const [totalScores, setTotalScores] = useState({ t1: 0, t2: 0 });
+  const [isGameOver, setIsGameOver] = useState(false);
+
+  useEffect(() => {
+    if (!selectedCategory) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    }
+  }, [selectedCategory]);
+
+  const t = {
+    tr: { teamMode: "Takım Savaşı", soloMode: "Tekli Oyun", t1: "1. Takım", t2: "2. Takım", rounds: "Tur", final: "OYUN SONUCU" },
+    en: { teamMode: "Team Battle", soloMode: "Solo Play", t1: "Team 1", t2: "Team 2", rounds: "Rounds", final: "FINAL RESULTS" }
+  }[language];
+
+  // Tamamen sıfırlama fonksiyonu
+  const resetAll = () => {
+    setSelectedCategory(null);
+    setCurrentRound(1);
+    setTotalScores({ t1: 0, t2: 0 });
+    setIsGameOver(false);
+  };
+
+  // Oyun Ekranı (GameScreen)
+  if (selectedCategory && !isGameOver) {
+    return (
+      <GameScreen 
+        category={selectedCategory} 
+        lang={language}
+        onQuit={resetAll} 
+        initialTotalScores={totalScores}
+        initialRound={currentRound}
+        teamMode={{
+          team1: teams.t1 || (language === 'tr' ? "Takım 1" : "Team 1"),
+          team2: teams.t2 || (language === 'tr' ? "Takım 2" : "Team 2"),
+          maxRounds: isTeamMode ? maxRounds : 1,
+          isTeamMode: isTeamMode
+        }}
+        onRoundComplete={(scores, nextRound, finished) => {
+          setTotalScores(scores);
+          setCurrentRound(nextRound);
+          setSelectedCategory(null); // Kategori seçimine geri dön
+          if (finished) setIsGameOver(true);
+        }}
+      />
+    );
+  }
+
+  // Kazanan Ekranı
+  if (isGameOver) {
+    const winner = totalScores.t1 > totalScores.t2 ? (teams.t1 || "Takım 1") : (teams.t2 || "Takım 2");
+    return (
+      <LinearGradient colors={['#1e272e', '#485460']} style={styles.fullCenter}>
+        <Text style={styles.finalTitle}>{t.final}</Text>
+        <Text style={styles.winnerName}>{totalScores.t1 === totalScores.t2 ? "BERABERE!" : winner.toUpperCase()}</Text>
+        <View style={styles.finalScoreRow}>
+          <Text style={styles.scoreDetail}>{teams.t1 || "T1"}: {totalScores.t1}</Text>
+          <Text style={styles.scoreDetail}> | </Text>
+          <Text style={styles.scoreDetail}>{teams.t2 || "T2"}: {totalScores.t2}</Text>
+        </View>
+        <TouchableOpacity style={styles.bigBtn} onPress={resetAll}><Text style={styles.btnText}>BAŞTAN BAŞLA</Text></TouchableOpacity>
+      </LinearGradient>
+    );
+  }
+
+  return (
+    <LinearGradient colors={['#1e272e', '#485460']} style={{flex: 1}}>
+      <SafeAreaView style={styles.container}>
+        <CategoryScreen 
+          lang={language} 
+          onSelectCategory={(cat) => setSelectedCategory(cat)} 
+          headerComponent={
+            <View style={styles.headerContainer}>
+              <View style={styles.langBar}>
+                {['tr', 'en'].map((l) => (
+                  <TouchableOpacity key={l} onPress={() => setLanguage(l as any)} style={[styles.smallBtn, language === l && styles.activeBtn]}>
+                    <Text style={styles.btnText}>{l.toUpperCase()}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {currentRound === 1 && (
+                <View style={styles.modeContainer}>
+                  <TouchableOpacity onPress={() => setIsTeamMode(false)} style={[styles.modeBtn, !isTeamMode && styles.soloActive]}>
+                    <Text style={styles.outlineText}>{t.soloMode}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setIsTeamMode(true)} style={[styles.modeBtn, isTeamMode && styles.teamActive]}>
+                    <Text style={styles.outlineText}>{t.teamMode}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {isTeamMode && currentRound === 1 && (
+                <LinearGradient colors={['#3d3d3d', '#57606f']} style={styles.teamCard}>
+                  <View style={styles.inputRow}>
+                    <TextInput style={styles.premiumInput} placeholder={t.t1} placeholderTextColor="#a4b0be" value={teams.t1} onChangeText={(txt) => setTeams(prev => ({...prev, t1: txt}))} />
+                    <Text style={styles.vsBadge}>VS</Text>
+                    <TextInput style={styles.premiumInput} placeholder={t.t2} placeholderTextColor="#a4b0be" value={teams.t2} onChangeText={(txt) => setTeams(prev => ({...prev, t2: txt}))} />
+                  </View>
+                  <View style={styles.roundPicker}>
+                    <Text style={styles.outlineText}>{t.rounds}: {maxRounds}</Text>
+                    <View style={{flexDirection:'row', gap: 6}}>
+                      {[1, 2, 3, 4, 5].map(r => (
+                        <TouchableOpacity key={r} onPress={() => setMaxRounds(r)} style={[styles.roundCircle, maxRounds === r && styles.activeBtn]}>
+                          <Text style={{color: 'white', fontWeight: 'bold', fontSize: 12}}>{r}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </LinearGradient>
+              )}
+
+              {currentRound > 1 && (
+                <View style={styles.roundBanner}>
+                  <Text style={styles.bannerText}>TUR {currentRound} - KATEGORİ SEÇİN</Text>
+                  <Text style={styles.miniScore}>{teams.t1 || "T1"}: {totalScores.t1} | {teams.t2 || "T2"}: {totalScores.t2}</Text>
+                </View>
+              )}
+            </View>
+          } 
+        />
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  container: { flex: 1 },
+  headerContainer: { padding: 20 },
+  langBar: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginBottom: 10 },
+  smallBtn: { padding: 8, borderRadius: 12, backgroundColor: '#2f3542', borderWidth: 1, borderColor: '#57606f' },
+  modeContainer: { flexDirection: 'row', backgroundColor: '#2f3542', borderRadius: 20, padding: 5, marginBottom: 15, borderWidth: 1, borderColor: '#57606f' },
+  modeBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 16 },
+  activeBtn: { backgroundColor: '#6c5ce7', borderColor: '#a29bfe', borderWidth: 1 },
+  soloActive: { backgroundColor: '#3498db' },
+  teamActive: { backgroundColor: '#e67e22' },
+  outlineText: { color: 'white', fontWeight: 'bold', textShadowColor: 'black', textShadowRadius: 1 },
+  btnText: { color: 'white', fontWeight: 'bold' },
+  teamCard: { padding: 15, borderRadius: 20, borderWidth: 1, borderColor: '#747d8c' },
+  inputRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15 },
+  premiumInput: { flex: 0.46, backgroundColor: '#2f3542', borderRadius: 12, padding: 10, color: 'white', borderWidth: 1, borderColor: '#57606f' },
+  vsBadge: { fontWeight: '900', color: '#ff4757', fontSize: 16 },
+  roundPicker: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  roundCircle: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#2f3542', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#57606f' },
+  roundBanner: { backgroundColor: '#6c5ce7', padding: 15, borderRadius: 15, alignItems: 'center' },
+  bannerText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  miniScore: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 5 },
+  fullCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  finalTitle: { color: '#fdcb6e', fontSize: 24, fontWeight: 'bold' },
+  winnerName: { color: 'white', fontSize: 45, fontWeight: '900', marginVertical: 20, textAlign: 'center' },
+  finalScoreRow: { flexDirection: 'row', marginBottom: 40 },
+  scoreDetail: { color: 'white', fontSize: 20 },
+  bigBtn: { backgroundColor: '#6c5ce7', paddingVertical: 15, paddingHorizontal: 40, borderRadius: 30 }
 });
