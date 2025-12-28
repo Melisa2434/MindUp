@@ -2,6 +2,14 @@
   "expo": {
     "name": "MindUp",
     "slug": "mindup",
+    "androidStatusBar": {
+      "hidden": true,
+      "translucent": true
+    },
+    "androidNavigationBar": {
+      "visible": false,
+      "sticky": true
+    },
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",

@@ -1,11 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as NavigationBar from 'expo-navigation-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { Accelerometer } from 'expo-sensors';
+import { setStatusBarHidden } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { BackHandler, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BackHandler, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Category } from './(tabs)/index';
+
 
 interface Props { 
   category: Category; lang: 'tr' | 'en'; onQuit: () => void;
@@ -62,14 +65,47 @@ export default function GameScreen({ category, lang, onQuit, teamMode, initialTo
   };
 
   useEffect(() => {
-    const start = async () => {
+  const start = async () => {
+    try {
+      // 1. Üstteki saat/pil çubuğunu gizle
+      setStatusBarHidden(true, 'fade');
+
+      // 2. Alttaki navigasyon tuşlarını Android'de gizle ve "Sürükleyici Mod"u aç
+      if (Platform.OS === 'android') {
+        await NavigationBar.setVisibilityAsync("hidden");
+        // 'as any' ekleyerek TypeScript hatasını engelliyoruz
+        await NavigationBar.setBehaviorAsync("sticky-immersive" as any);
+      }
+
+      // 3. Ekranı yatay moda kilitle
       await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
+      
+      // 4. Kelimeleri karıştır
       setShuffledWords([...category.words[lang]].sort(() => Math.random() - 0.5));
-    };
-    start();
-    const bh = BackHandler.addEventListener('hardwareBackPress', () => { onQuit(); return true; });
-    return () => { bh.remove(); ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP); };
-  }, [category]);
+    } catch (error) {
+      console.log("Navigasyon ayarları yüklenirken hata oluştu:", error);
+    }
+  };
+
+  start();
+
+  // Donanım geri tuşunu oyun içinde pasifize et/yönet
+  const bh = BackHandler.addEventListener('hardwareBackPress', () => { 
+    onQuit(); 
+    return true; 
+  });
+
+  return () => { 
+    bh.remove(); 
+    // Oyundan çıkınca her şeyi eski (dikey ve görünür) haline getir
+    setStatusBarHidden(false, 'fade');
+    if (Platform.OS === 'android') {
+      NavigationBar.setVisibilityAsync("visible");
+    }
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP); 
+  };
+}, [category, lang, onQuit]);
+
 
   useEffect(() => {
     let interval: any;
