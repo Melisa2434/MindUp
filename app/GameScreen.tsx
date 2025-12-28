@@ -4,8 +4,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { Accelerometer } from 'expo-sensors';
 import React, { useEffect, useRef, useState } from 'react';
-import { BackHandler, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BackHandler, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Category } from './(tabs)/index';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Props { 
   category: Category; lang: 'tr' | 'en'; onQuit: () => void;
@@ -27,7 +29,53 @@ export default function GameScreen({ category, lang, onQuit, teamMode, initialTo
   const [shuffledWords, setShuffledWords] = useState<string[]>([]);
   
   const statusRef = useRef(status);
+  const lastTap = useRef(0);
+  const touchStartX = useRef(0);
+
   useEffect(() => { statusRef.current = status; }, [status]);
+
+  async function playSound(type: 'correct' | 'pass' | 'finish') {
+    try {
+      let source = type === 'correct' ? require('../assets/images/sounds/correct.mp3') : 
+                   type === 'pass' ? require('../assets/images/sounds/pass.mp3') : 
+                   require('../assets/images/sounds/finish.mp3');
+      const { sound } = await Audio.Sound.createAsync(source);
+      await sound.playAsync();
+    } catch (e) {}
+  }
+
+  const triggerAction = (type: 'correct' | 'pass') => {
+    if (statusRef.current !== 'ready' || gameState !== 'playing' || isPaused) return;
+    const word = shuffledWords[wordIndex];
+    setStatus(type);
+    playSound(type);
+    setRoundHistory(prev => [...prev, { word, result: type }]);
+  };
+
+  // DOKUNMATİK YÖNETİMİ (Responder Sistemi)
+  const handleTouchStart = (e: any) => {
+    touchStartX.current = e.nativeEvent.pageX;
+  };
+
+  const handleTouchEnd = (e: any) => {
+    if (gameState !== 'playing' || isPaused || statusRef.current !== 'ready') return;
+
+    const touchEndX = e.nativeEvent.pageX;
+    const dx = touchEndX - touchStartX.current;
+
+    // 1. KAYDIRMA KONTROLÜ (Swipe)
+    if (Math.abs(dx) > 60) {
+      triggerAction('pass');
+      return;
+    }
+
+    // 2. ÇİFT DOKUNUŞ KONTROLÜ (Double Tap)
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      triggerAction('correct');
+    }
+    lastTap.current = now;
+  };
 
   useEffect(() => {
     const start = async () => {
@@ -44,7 +92,12 @@ export default function GameScreen({ category, lang, onQuit, teamMode, initialTo
     if (gameState === 'countdown' && !isPaused) {
       interval = setInterval(() => { setCount(c => { if (c <= 1) { setGameState('playing'); return 0; } return c - 1; }); }, 1000);
     } else if (gameState === 'playing' && !isPaused) {
-      interval = setInterval(() => { setTimer(t => { if (t <= 1) { setGameState('roundSummary'); return 0; } return t - 1; }); }, 1000);
+      interval = setInterval(() => { 
+        setTimer(t => { 
+          if (t <= 1) { playSound('finish'); setGameState('roundSummary'); return 0; } 
+          return t - 1; 
+        }); 
+      }, 1000);
     }
     return () => clearInterval(interval);
   }, [gameState, isPaused]);
@@ -53,14 +106,8 @@ export default function GameScreen({ category, lang, onQuit, teamMode, initialTo
     let sub: any;
     if (gameState === 'playing' && !isPaused) {
       sub = Accelerometer.addListener(({ z }) => {
-        if (z < -0.75 && statusRef.current === 'ready') { 
-          setRoundHistory(prev => [...prev, { word: shuffledWords[wordIndex], result: 'correct' }]);
-          setStatus('correct'); playSound('correct'); 
-        }
-        else if (z > 0.75 && statusRef.current === 'ready') { 
-          setRoundHistory(prev => [...prev, { word: shuffledWords[wordIndex], result: 'pass' }]);
-          setStatus('pass'); playSound('pass'); 
-        }
+        if (z < -0.75 && statusRef.current === 'ready') triggerAction('correct');
+        else if (z > 0.75 && statusRef.current === 'ready') triggerAction('pass');
         else if (z > -0.3 && z < 0.3 && statusRef.current !== 'ready') { 
           setStatus('ready'); setWordIndex(p => (p + 1) % shuffledWords.length); 
         }
@@ -70,84 +117,79 @@ export default function GameScreen({ category, lang, onQuit, teamMode, initialTo
     return () => sub && sub.remove();
   }, [gameState, isPaused, shuffledWords, wordIndex]);
 
-  async function playSound(type: 'correct' | 'pass') {
-    try {
-      const source = type === 'correct' ? require('../assets/images/sounds/correct.mp3') : require('../assets/images/sounds/pass.mp3');
-      const { sound } = await Audio.Sound.createAsync(source);
-      await sound.playAsync();
-    } catch (e) {}
-  }
-
   const handleNextAction = () => {
     const correctCount = roundHistory.filter(h => h.result === 'correct').length;
     const currentScores = { ...initialTotalScores, [turn]: initialTotalScores[turn] + correctCount };
-
-    if (!teamMode.isTeamMode) {
-      onRoundComplete(currentScores, 1, true); // Tekli modda bitir
-    } else {
+    if (!teamMode.isTeamMode) onRoundComplete(currentScores, 1, true);
+    else {
       if (turn === 't1') {
-        // T1 bitti, T2'ye geç (Aynı kategoriyle devam edebilir veya değişebilir ama T2'yi başlatıyoruz)
-        setTurn('t2');
-        setRoundHistory([]); setTimer(60); setCount(3); setWordIndex(0);
-        setGameState('countdown');
+        setTurn('t2'); setRoundHistory([]); setTimer(60); setCount(3); setWordIndex(0); setGameState('countdown');
       } else {
-        // T2 de bitti, tur tamamlandı. Şimdi kategori seçimine dön!
-        const isGameFinished = initialRound === teamMode.maxRounds;
-        onRoundComplete(currentScores, initialRound + 1, isGameFinished);
+        onRoundComplete(currentScores, initialRound + 1, initialRound === teamMode.maxRounds);
       }
     }
   };
 
-  if (gameState === 'roundSummary') {
-    return (
-      <View style={styles.resContainer}>
-        <Text style={styles.resText}>TUR ÖZETİ - {turn === 't1' ? teamMode.team1 : teamMode.team2}</Text>
-        <ScrollView style={{width: '80%', marginVertical: 10}}>
-          {roundHistory.map((item, idx) => (
-            <View key={idx} style={styles.historyRow}>
-              <Text style={{color: 'white'}}>{item.word.toUpperCase()}</Text>
-              <Text>{item.result === 'correct' ? '✅' : '❌'}</Text>
-            </View>
-          ))}
-        </ScrollView>
-        <TouchableOpacity style={styles.btn} onPress={handleNextAction}><Text style={styles.btnText}>DEVAM</Text></TouchableOpacity>
-      </View>
-    );
-  }
+  if (gameState === 'roundSummary') return (
+    <View style={styles.resContainer}>
+      <Text style={styles.resTitle}>TUR ÖZETİ</Text>
+      <ScrollView style={{width: '85%', marginVertical: 15}}>{roundHistory.map((item, idx) => (
+        <View key={idx} style={styles.historyRow}>
+          <Text style={{color: 'white', fontWeight: 'bold'}}>{item.word.toUpperCase()}</Text>
+          <Text>{item.result === 'correct' ? '✅' : '❌'}</Text>
+        </View>
+      ))}</ScrollView>
+      <TouchableOpacity style={styles.btn} onPress={handleNextAction}><Text style={styles.btnText}>DEVAM</Text></TouchableOpacity>
+    </View>
+  );
 
   return (
-    <LinearGradient colors={status === 'correct' ? ['#2ecc71', '#27ae60'] : status === 'pass' ? ['#e74c3c', '#c0392b'] : ['#6c5ce7', '#a29bfe']} style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => setIsPaused(true)} style={styles.pauseBtn}><Ionicons name="pause" size={28} color="white" /></TouchableOpacity>
-        <Text style={styles.infoText}>{teamMode.isTeamMode ? (turn === 't1' ? teamMode.team1 : teamMode.team2) : ''} | Tur: {initialRound}</Text>
-        <Text style={styles.timer}>{timer}</Text>
-      </View>
-      <View style={styles.wordBox}>
-        <Text style={styles.wordText}>{gameState === 'countdown' ? count : (status === 'correct' ? 'DOĞRU' : status === 'pass' ? 'PAS' : shuffledWords[wordIndex]?.toUpperCase())}</Text>
-      </View>
-      <Modal visible={isPaused} transparent={true} animationType="fade">
-        <View style={styles.overlay}><View style={styles.pauseCard}>
-            <TouchableOpacity onPress={() => setIsPaused(false)} style={styles.btn}><Text style={styles.btnText}>DEVAM</Text></TouchableOpacity>
-            <TouchableOpacity onPress={onQuit} style={[styles.btn, {marginTop: 10, backgroundColor: '#e74c3c'}]}><Text style={styles.btnText}>ÇIK</Text></TouchableOpacity>
-        </View></View>
-      </Modal>
-    </LinearGradient>
+    <View 
+      style={{flex: 1}} 
+      onStartShouldSetResponder={() => true}
+      onResponderGrant={handleTouchStart}
+      onResponderRelease={handleTouchEnd}
+    >
+      <LinearGradient 
+        colors={status === 'correct' ? ['#2ecc71', '#27ae60'] : status === 'pass' ? ['#e74c3c', '#c0392b'] : ['#6c5ce7', '#a29bfe']} 
+        style={styles.container}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setIsPaused(true)} style={styles.pauseBtn}><Ionicons name="pause" size={28} color="white" /></TouchableOpacity>
+          <Text style={styles.infoText}>{teamMode.isTeamMode ? (turn === 't1' ? teamMode.team1 : teamMode.team2) : ''} | Tur: {initialRound}</Text>
+          <Text style={styles.timer}>{timer}</Text>
+        </View>
+        
+        <View style={styles.wordBox} pointerEvents="none"> 
+          <Text style={styles.wordText}>
+            {gameState === 'countdown' ? count : (status === 'correct' ? 'DOĞRU' : status === 'pass' ? 'PAS' : shuffledWords[wordIndex]?.toUpperCase())}
+          </Text>
+        </View>
+
+        <Modal visible={isPaused} transparent={true} animationType="fade">
+          <View style={styles.overlay}><View style={styles.pauseCard}>
+              <TouchableOpacity onPress={() => setIsPaused(false)} style={styles.btn}><Text style={styles.btnText}>DEVAM ET</Text></TouchableOpacity>
+              <TouchableOpacity onPress={onQuit} style={[styles.btn, {marginTop: 12, backgroundColor: '#e74c3c'}]}><Text style={styles.btnText}>ÇIK</Text></TouchableOpacity>
+          </View></View>
+        </Modal>
+      </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { position: 'absolute', top: 20, left: 30, right: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { position: 'absolute', top: 20, left: 30, right: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 },
   pauseBtn: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 15 },
   infoText: { color: 'white', fontWeight: 'bold' },
-  timer: { color: 'white', fontSize: 24, fontWeight: 'bold' },
-  wordBox: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 40, borderRadius: 30, width: '70%', alignItems: 'center' },
-  wordText: { fontSize: 50, color: 'white', fontWeight: 'bold', textAlign: 'center' },
-  resContainer: { flex: 1, backgroundColor: '#1e272e', padding: 20, alignItems: 'center' },
-  resText: { color: '#fdcb6e', fontSize: 24, fontWeight: 'bold' },
-  historyRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 8, borderBottomWidth: 1, borderBottomColor: '#2f3542' },
-  btn: { backgroundColor: '#6c5ce7', paddingVertical: 12, paddingHorizontal: 40, borderRadius: 25 },
-  btnText: { color: 'white', fontWeight: 'bold' },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
-  pauseCard: { backgroundColor: '#2d3436', padding: 40, borderRadius: 30, alignItems: 'center' }
+  timer: { color: 'white', fontSize: 28, fontWeight: 'bold' },
+  wordBox: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 45, borderRadius: 30, width: '75%', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
+  wordText: { fontSize: 55, color: 'white', fontWeight: 'bold', textAlign: 'center' },
+  resContainer: { flex: 1, backgroundColor: '#1e272e', padding: 30, alignItems: 'center' },
+  resTitle: { color: '#fdcb6e', fontSize: 28, fontWeight: 'bold', marginBottom: 10 },
+  historyRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 10, borderBottomWidth: 1, borderBottomColor: '#2f3542' },
+  btn: { backgroundColor: '#6c5ce7', paddingVertical: 14, paddingHorizontal: 45, borderRadius: 25 },
+  btnText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' },
+  pauseCard: { backgroundColor: '#2d3436', padding: 40, borderRadius: 30, alignItems: 'center', borderWidth: 1, borderColor: '#6c5ce7' }
 });
