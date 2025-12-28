@@ -4,10 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { Accelerometer } from 'expo-sensors';
 import React, { useEffect, useRef, useState } from 'react';
-import { BackHandler, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BackHandler, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Category } from './(tabs)/index';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Props { 
   category: Category; lang: 'tr' | 'en'; onQuit: () => void;
@@ -52,28 +50,14 @@ export default function GameScreen({ category, lang, onQuit, teamMode, initialTo
     setRoundHistory(prev => [...prev, { word, result: type }]);
   };
 
-  // DOKUNMATİK YÖNETİMİ (Responder Sistemi)
-  const handleTouchStart = (e: any) => {
-    touchStartX.current = e.nativeEvent.pageX;
-  };
+  const handleTouchStart = (e: any) => { touchStartX.current = e.nativeEvent.pageX; };
 
   const handleTouchEnd = (e: any) => {
     if (gameState !== 'playing' || isPaused || statusRef.current !== 'ready') return;
-
-    const touchEndX = e.nativeEvent.pageX;
-    const dx = touchEndX - touchStartX.current;
-
-    // 1. KAYDIRMA KONTROLÜ (Swipe)
-    if (Math.abs(dx) > 60) {
-      triggerAction('pass');
-      return;
-    }
-
-    // 2. ÇİFT DOKUNUŞ KONTROLÜ (Double Tap)
+    const dx = e.nativeEvent.pageX - touchStartX.current;
+    if (Math.abs(dx) > 60) { triggerAction('pass'); return; }
     const now = Date.now();
-    if (now - lastTap.current < 300) {
-      triggerAction('correct');
-    }
+    if (now - lastTap.current < 300) { triggerAction('correct'); }
     lastTap.current = now;
   };
 
@@ -130,16 +114,40 @@ export default function GameScreen({ category, lang, onQuit, teamMode, initialTo
     }
   };
 
+  // DOĞRU VE PAS SAYILARI HESAPLAMA
+  const correctCount = roundHistory.filter(h => h.result === 'correct').length;
+  const passCount = roundHistory.filter(h => h.result === 'pass').length;
+
   if (gameState === 'roundSummary') return (
     <View style={styles.resContainer}>
-      <Text style={styles.resTitle}>TUR ÖZETİ</Text>
-      <ScrollView style={{width: '85%', marginVertical: 15}}>{roundHistory.map((item, idx) => (
-        <View key={idx} style={styles.historyRow}>
-          <Text style={{color: 'white', fontWeight: 'bold'}}>{item.word.toUpperCase()}</Text>
-          <Text>{item.result === 'correct' ? '✅' : '❌'}</Text>
+      <Text style={styles.resTitle}>{lang === 'tr' ? 'TUR ÖZETİ' : 'ROUND SUMMARY'}</Text>
+      
+      {/* İSTATİSTİK ROZETLERİ */}
+      <View style={styles.statsRow}>
+        <View style={[styles.statBadge, {backgroundColor: '#2ecc71'}]}>
+           <Text style={styles.statLabel}>{lang === 'tr' ? 'DOĞRU' : 'CORRECT'}</Text>
+           <Text style={styles.statValue}>{correctCount}</Text>
         </View>
-      ))}</ScrollView>
-      <TouchableOpacity style={styles.btn} onPress={handleNextAction}><Text style={styles.btnText}>DEVAM</Text></TouchableOpacity>
+        <View style={[styles.statBadge, {backgroundColor: '#e74c3c'}]}>
+           <Text style={styles.statLabel}>{lang === 'tr' ? 'PAS' : 'PASS'}</Text>
+           <Text style={styles.statValue}>{passCount}</Text>
+        </View>
+      </View>
+
+      <ScrollView style={{width: '85%', marginVertical: 10}} showsVerticalScrollIndicator={false}>
+        {roundHistory.map((item, idx) => (
+          <View key={idx} style={styles.historyRow}>
+            <Text style={{color: 'white', fontWeight: 'bold', fontSize: 16}}>{item.word.toUpperCase()}</Text>
+            <Text style={{fontSize: 20}}>{item.result === 'correct' ? '✅' : '❌'}</Text>
+          </View>
+        ))}
+      </ScrollView>
+
+      <TouchableOpacity style={styles.btn} onPress={handleNextAction}>
+        <Text style={styles.btnText}>
+           {teamMode.isTeamMode && turn === 't1' ? (lang === 'tr' ? 'SIRADAKİ TAKIM' : 'NEXT TEAM') : (lang === 'tr' ? 'DEVAM' : 'CONTINUE')}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -156,20 +164,23 @@ export default function GameScreen({ category, lang, onQuit, teamMode, initialTo
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => setIsPaused(true)} style={styles.pauseBtn}><Ionicons name="pause" size={28} color="white" /></TouchableOpacity>
-          <Text style={styles.infoText}>{teamMode.isTeamMode ? (turn === 't1' ? teamMode.team1 : teamMode.team2) : ''} | Tur: {initialRound}</Text>
+          <Text style={styles.infoText}>
+            {teamMode.isTeamMode ? `${turn === 't1' ? teamMode.team1 : teamMode.team2} | ` : ''} 
+            {lang === 'tr' ? 'Tur' : 'Round'}: {initialRound}
+          </Text>
           <Text style={styles.timer}>{timer}</Text>
         </View>
         
         <View style={styles.wordBox} pointerEvents="none"> 
           <Text style={styles.wordText}>
-            {gameState === 'countdown' ? count : (status === 'correct' ? 'DOĞRU' : status === 'pass' ? 'PAS' : shuffledWords[wordIndex]?.toUpperCase())}
+            {gameState === 'countdown' ? count : (status === 'correct' ? (lang === 'tr' ? 'DOĞRU' : 'CORRECT') : status === 'pass' ? (lang === 'tr' ? 'PAS' : 'PASS') : shuffledWords[wordIndex]?.toUpperCase())}
           </Text>
         </View>
 
         <Modal visible={isPaused} transparent={true} animationType="fade">
           <View style={styles.overlay}><View style={styles.pauseCard}>
-              <TouchableOpacity onPress={() => setIsPaused(false)} style={styles.btn}><Text style={styles.btnText}>DEVAM ET</Text></TouchableOpacity>
-              <TouchableOpacity onPress={onQuit} style={[styles.btn, {marginTop: 12, backgroundColor: '#e74c3c'}]}><Text style={styles.btnText}>ÇIK</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => setIsPaused(false)} style={styles.btn}><Text style={styles.btnText}>{lang === 'tr' ? 'DEVAM ET' : 'RESUME'}</Text></TouchableOpacity>
+              <TouchableOpacity onPress={onQuit} style={[styles.btn, {marginTop: 12, backgroundColor: '#e74c3c'}]}><Text style={styles.btnText}>{lang === 'tr' ? 'ÇIK' : 'QUIT'}</Text></TouchableOpacity>
           </View></View>
         </Modal>
       </LinearGradient>
@@ -181,24 +192,28 @@ const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { position: 'absolute', top: 20, left: 30, right: 30, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 },
   pauseBtn: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 15 },
-  infoText: { color: 'white', fontWeight: 'bold' },
+  infoText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
   timer: { color: 'white', fontSize: 28, fontWeight: 'bold' },
-  wordBox: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 45, borderRadius: 30, width: '75%', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
+  wordBox: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 45, borderRadius: 30, width: '85%', alignItems: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
   wordText: { 
-  fontSize: 60, 
-  color: 'white', 
-  fontWeight: '900', 
-  textAlign: 'center',
-  textShadowColor: 'rgba(0, 0, 0, 0.2)',
-  textShadowOffset: { width: 0, height: 4 },
-  textShadowRadius: 5,
-  letterSpacing: 2,
-},
-  resContainer: { flex: 1, backgroundColor: '#1e272e', padding: 30, alignItems: 'center' },
-  resTitle: { color: '#fdcb6e', fontSize: 28, fontWeight: 'bold', marginBottom: 10 },
-  historyRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 10, borderBottomWidth: 1, borderBottomColor: '#2f3542' },
-  btn: { backgroundColor: '#6c5ce7', paddingVertical: 14, paddingHorizontal: 45, borderRadius: 25 },
-  btnText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
+    fontSize: 55, 
+    color: 'white', 
+    fontWeight: '900', 
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 6,
+    letterSpacing: 2,
+  },
+  resContainer: { flex: 1, backgroundColor: '#1e272e', padding: 20, alignItems: 'center' },
+  resTitle: { color: '#fdcb6e', fontSize: 26, fontWeight: 'bold', marginBottom: 15 },
+  statsRow: { flexDirection: 'row', gap: 20, marginBottom: 15 },
+  statBadge: { padding: 12, borderRadius: 20, alignItems: 'center', minWidth: 100 },
+  statLabel: { color: 'white', fontSize: 12, fontWeight: 'bold', opacity: 0.9 },
+  statValue: { color: 'white', fontSize: 24, fontWeight: 'bold' },
+  historyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#2f3542', width: '100%' },
+  btn: { backgroundColor: '#6c5ce7', paddingVertical: 14, paddingHorizontal: 40, borderRadius: 25 },
+  btnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' },
   pauseCard: { backgroundColor: '#2d3436', padding: 40, borderRadius: 30, alignItems: 'center', borderWidth: 1, borderColor: '#6c5ce7' }
 });

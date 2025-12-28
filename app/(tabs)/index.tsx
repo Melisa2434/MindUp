@@ -80,21 +80,57 @@ export default function HomeScreen() {
   }
 
   // 2. ADIM: Kazanan Ekranı
-  if (isGameOver) {
-    const winner = totalScores.t1 > totalScores.t2 ? (teams.t1 || "Takım 1") : (teams.t2 || "Takım 2");
-    return (
-      <LinearGradient colors={['#1e272e', '#485460']} style={styles.fullCenter}>
-        <Text style={styles.finalTitle}>{t.final}</Text>
-        <Text style={styles.winnerName}>{totalScores.t1 === totalScores.t2 ? "BERABERE!" : winner.toUpperCase()}</Text>
-        <View style={styles.finalScoreRow}>
-          <Text style={styles.scoreDetail}>{teams.t1 || "T1"}: {totalScores.t1}</Text>
-          <Text style={styles.scoreDetail}> | </Text>
-          <Text style={styles.scoreDetail}>{teams.t2 || "T2"}: {totalScores.t2}</Text>
-        </View>
-        <TouchableOpacity style={styles.bigBtn} onPress={resetAll}><Text style={styles.btnText}>BAŞTAN BAŞLA</Text></TouchableOpacity>
-      </LinearGradient>
-    );
-  }
+  // Kazanan Ekranı Bölümü
+if (isGameOver) {
+  const winnerName = totalScores.t1 > totalScores.t2 ? (teams.t1 || "Takım 1") : (teams.t2 || "Takım 2");
+  const isDraw = totalScores.t1 === totalScores.t2;
+
+  return (
+    <LinearGradient colors={['#1e272e', '#485460']} style={styles.fullCenter}>
+      {/* BAŞLIK: Takım modunda "OYUN SONUCU", bireysel modda "TEBRİKLER" */}
+      <Text style={styles.finalTitle}>
+        {isTeamMode ? t.final : (language === 'tr' ? "OYUN BİTTİ" : "GAME OVER")}
+      </Text>
+      
+      {isTeamMode ? (
+        // --- TAKIM MODU GÖRÜNÜMÜ ---
+        <>
+          <Text style={styles.winnerName}>
+            {isDraw ? (language === 'tr' ? "BERABERE!" : "DRAW!") : winnerName.toUpperCase()}
+          </Text>
+          <View style={styles.finalScoreRow}>
+            <Text style={styles.scoreDetail}>{teams.t1 || "T1"}: {totalScores.t1}</Text>
+            <Text style={styles.scoreDetail}> | </Text>
+            <Text style={styles.scoreDetail}>{teams.t2 || "T2"}: {totalScores.t2}</Text>
+          </View>
+        </>
+      ) : (
+        // --- BİREYSEL MOD GÖRÜNÜMÜ (Takım yazıları tamamen kaldırıldı) ---
+        <>
+          <Text style={styles.winnerName}>
+            {(language === 'tr' ? "TOPLAM SKOR" : "TOTAL SCORE")}
+          </Text>
+          <Text style={[styles.winnerName, { fontSize: 80, color: '#fdcb6e', marginTop: 0 }]}>
+            {totalScores.t1}
+          </Text>
+          <Text style={[styles.splashSubtitle, { marginBottom: 30 }]}>
+            {language === 'tr' ? "Harika bir performans!" : "Great performance!"}
+          </Text>
+        </>
+      )}
+
+      <TouchableOpacity 
+        style={styles.bigBtn} 
+        onPress={resetAll}
+        accessibilityLabel={language === 'tr' ? "Baştan başla" : "Restart game"}
+      >
+        <Text style={styles.btnText}>
+          {language === 'tr' ? "ANA MENÜYE DÖN" : "BACK TO MENU"}
+        </Text>
+      </TouchableOpacity>
+    </LinearGradient>
+  );
+}
 
   // 3. ADIM: Oyun Ekranı
   if (selectedCategory) {
