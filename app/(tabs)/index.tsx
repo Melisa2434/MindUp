@@ -73,7 +73,7 @@ export default function HomeScreen() {
           <Text style={styles.splashTitle}>MindUp</Text>
           
           {/* Sloganı daha havalı bir şeyle değiştirdik */}
-          <Text style={styles.splashSubtitle}>Aklın eğlenmede!</Text>
+          <Text style={styles.splashSubtitle}>Kafana odaklan!</Text>
         </Animated.View>
       </LinearGradient>
     );
@@ -210,7 +210,32 @@ const styles = StyleSheet.create({
   finalScoreRow: { flexDirection: 'row', marginBottom: 40 },
   scoreDetail: { color: 'white', fontSize: 20 },
   bigBtn: { backgroundColor: '#6c5ce7', paddingVertical: 15, paddingHorizontal: 40, borderRadius: 30 },
-  splashContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  splashTitle: { fontSize: 48, fontWeight: '900', color: 'white', marginTop: 20, letterSpacing: 2 },
-  splashSubtitle: { fontSize: 18, color: 'rgba(255,255,255,0.8)', marginTop: 10, fontWeight: '500' }
+  splashTitle: { 
+    fontSize: 55, // Biraz daha büyüttük
+    fontWeight: '900', 
+    color: 'white', 
+    marginTop: 20, 
+    letterSpacing: 4, // Harfleri birbirinden ayırarak premium bir hava kattık
+    textShadowColor: 'rgba(0, 0, 0, 0.3)', // Hafif bir gölge derinlik katar
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 10,
+    fontFamily: 'System', // Cihazın en iyi sans-serif fontunu kullanır
+  },
+  
+  splashSubtitle: { 
+    fontSize: 20, 
+    color: 'rgba(255, 255, 255, 0.9)', 
+    marginTop: 5, 
+    fontWeight: '600',
+    fontStyle: 'italic', 
+    letterSpacing: 1,
+    textTransform: 'uppercase', 
+  },
+
+  splashContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    
+  },
 });
