@@ -1,7 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import React, { useEffect, useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CategoryScreen from '../CategoryScreen';
 import GameScreen from '../GameScreen';
 
@@ -13,17 +14,36 @@ export interface Category {
 }
 
 export default function HomeScreen() {
+  // Splash Ekran State'i
+  const [isSplashActive, setIsSplashActive] = useState(true);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Oyun State'leri
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [language, setLanguage] = useState<'tr' | 'en'>('tr');
   const [isTeamMode, setIsTeamMode] = useState(false);
   const [teams, setTeams] = useState({ t1: '', t2: '' });
   const [maxRounds, setMaxRounds] = useState(3);
-
-  // Oyunun ilerleyişini takip eden yeni state'ler
   const [currentRound, setCurrentRound] = useState(1);
   const [totalScores, setTotalScores] = useState({ t1: 0, t2: 0 });
   const [isGameOver, setIsGameOver] = useState(false);
 
+  // Açılış Animasyonu Yönetimi
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+
+    const timer = setTimeout(() => {
+      setIsSplashActive(false);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [fadeAnim]);
+
+  // Ekran Oryantasyonu Yönetimi
   useEffect(() => {
     if (!selectedCategory) {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
@@ -35,7 +55,6 @@ export default function HomeScreen() {
     en: { teamMode: "Team Battle", soloMode: "Solo Play", t1: "Team 1", t2: "Team 2", rounds: "Rounds", final: "FINAL RESULTS" }
   }[language];
 
-  // Tamamen sıfırlama fonksiyonu
   const resetAll = () => {
     setSelectedCategory(null);
     setCurrentRound(1);
@@ -43,32 +62,20 @@ export default function HomeScreen() {
     setIsGameOver(false);
   };
 
-  // Oyun Ekranı (GameScreen)
-  if (selectedCategory && !isGameOver) {
+  // 1. ADIM: Karşılama Ekranı (Splash)
+  if (isSplashActive) {
     return (
-      <GameScreen 
-        category={selectedCategory} 
-        lang={language}
-        onQuit={resetAll} 
-        initialTotalScores={totalScores}
-        initialRound={currentRound}
-        teamMode={{
-          team1: teams.t1 || (language === 'tr' ? "Takım 1" : "Team 1"),
-          team2: teams.t2 || (language === 'tr' ? "Takım 2" : "Team 2"),
-          maxRounds: isTeamMode ? maxRounds : 1,
-          isTeamMode: isTeamMode
-        }}
-        onRoundComplete={(scores, nextRound, finished) => {
-          setTotalScores(scores);
-          setCurrentRound(nextRound);
-          setSelectedCategory(null); // Kategori seçimine geri dön
-          if (finished) setIsGameOver(true);
-        }}
-      />
+      <LinearGradient colors={['#6c5ce7', '#a29bfe']} style={styles.splashContainer}>
+        <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
+          <Ionicons name="bulb-outline" size={100} color="white" />
+          <Text style={styles.splashTitle}>MindUp</Text>
+          <Text style={styles.splashSubtitle}>Alnındakini Tahmin Et!</Text>
+        </Animated.View>
+      </LinearGradient>
     );
   }
 
-  // Kazanan Ekranı
+  // 2. ADIM: Kazanan Ekranı
   if (isGameOver) {
     const winner = totalScores.t1 > totalScores.t2 ? (teams.t1 || "Takım 1") : (teams.t2 || "Takım 2");
     return (
@@ -85,6 +92,32 @@ export default function HomeScreen() {
     );
   }
 
+  // 3. ADIM: Oyun Ekranı
+  if (selectedCategory) {
+    return (
+      <GameScreen 
+        category={selectedCategory} 
+        lang={language}
+        onQuit={resetAll} 
+        initialTotalScores={totalScores}
+        initialRound={currentRound}
+        teamMode={{
+          team1: teams.t1 || (language === 'tr' ? "Takım 1" : "Team 1"),
+          team2: teams.t2 || (language === 'tr' ? "Takım 2" : "Team 2"),
+          maxRounds: isTeamMode ? maxRounds : 1,
+          isTeamMode: isTeamMode
+        }}
+        onRoundComplete={(scores: any, nextRound: any, finished: any) => {
+          setTotalScores(scores);
+          setCurrentRound(nextRound);
+          setSelectedCategory(null);
+          if (finished) setIsGameOver(true);
+        }}
+      />
+    );
+  }
+
+  // 4. ADIM: Ana Kategori Seçim Ekranı
   return (
     <LinearGradient colors={['#1e272e', '#485460']} style={{flex: 1}}>
       <SafeAreaView style={styles.container}>
@@ -172,5 +205,8 @@ const styles = StyleSheet.create({
   winnerName: { color: 'white', fontSize: 45, fontWeight: '900', marginVertical: 20, textAlign: 'center' },
   finalScoreRow: { flexDirection: 'row', marginBottom: 40 },
   scoreDetail: { color: 'white', fontSize: 20 },
-  bigBtn: { backgroundColor: '#6c5ce7', paddingVertical: 15, paddingHorizontal: 40, borderRadius: 30 }
+  bigBtn: { backgroundColor: '#6c5ce7', paddingVertical: 15, paddingHorizontal: 40, borderRadius: 30 },
+  splashContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  splashTitle: { fontSize: 48, fontWeight: '900', color: 'white', marginTop: 20, letterSpacing: 2 },
+  splashSubtitle: { fontSize: 18, color: 'rgba(255,255,255,0.8)', marginTop: 10, fontWeight: '500' }
 });
