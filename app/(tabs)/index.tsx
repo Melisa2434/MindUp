@@ -62,14 +62,18 @@ export default function HomeScreen() {
     setIsGameOver(false);
   };
 
-  // 1. ADIM: Karşılama Ekranı (Splash)
+  // Karşılama Ekranı (Splash)
   if (isSplashActive) {
     return (
       <LinearGradient colors={['#6c5ce7', '#a29bfe']} style={styles.splashContainer}>
         <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
-          <Ionicons name="bulb-outline" size={100} color="white" />
+          {/* İkonu 'bulb-outline' yerine 'rocket' yaptık */}
+          <Ionicons name="rocket" size={100} color="white" /> 
+          
           <Text style={styles.splashTitle}>MindUp</Text>
-          <Text style={styles.splashSubtitle}>Alnındakini Tahmin Et!</Text>
+          
+          {/* Sloganı daha havalı bir şeyle değiştirdik */}
+          <Text style={styles.splashSubtitle}>Aklın eğlenmede!</Text>
         </Animated.View>
       </LinearGradient>
     );
