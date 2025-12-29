@@ -20,7 +20,7 @@ MindUp, arkadaşlarınızla veya tek başınıza oynayabileceğiniz, ivmeölçer
 * **Tam Ekran Deneyimi:** Kesintisiz oyun için Android Immersive Mode desteği.
 
 ## Kurulum ve Çalıştırma (Setup & Run)
-1. Projeyi bilgisayarınıza indirin (Clone).
+1. Projeyi bilgisayarınıza indirin.
 2. Terminalde proje klasörüne gidin.
 3. Bağımlılıkları yükleyin:
    ```bash
