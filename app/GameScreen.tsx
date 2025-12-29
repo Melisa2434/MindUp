@@ -67,20 +67,20 @@ export default function GameScreen({ category, lang, onQuit, teamMode, initialTo
   useEffect(() => {
   const start = async () => {
     try {
-      // 1. Üstteki saat/pil çubuğunu gizle
+      // Üstteki saat/pil çubuğunu gizle
       setStatusBarHidden(true, 'fade');
 
-      // 2. Alttaki navigasyon tuşlarını Android'de gizle ve "Sürükleyici Mod"u aç
+      // Alttaki navigasyon tuşlarını Android'de gizle ve "Sürükleyici Mod"u aç
       if (Platform.OS === 'android') {
         await NavigationBar.setVisibilityAsync("hidden");
-        // 'as any' ekleyerek TypeScript hatasını engelliyoruz
+        
         await NavigationBar.setBehaviorAsync("sticky-immersive" as any);
       }
 
-      // 3. Ekranı yatay moda kilitle
+      // Ekranı yatay moda kilitle
       await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
       
-      // 4. Kelimeleri karıştır
+      // Kelimeleri karıştır
       setShuffledWords([...category.words[lang]].sort(() => Math.random() - 0.5));
     } catch (error) {
       console.log("Navigasyon ayarları yüklenirken hata oluştu:", error);

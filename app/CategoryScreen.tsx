@@ -52,7 +52,7 @@ export default function CategoryScreen({ lang, onSelectCategory, headerComponent
         data={categories}
         numColumns={2}
         keyExtractor={(item) => item.id}
-        // KLAVYE FIX: ListHeaderComponent bir fonksiyon olarak değil, doğrudan prop olarak verilmeli
+        
         ListHeaderComponent={
           <View>
             {headerComponent}

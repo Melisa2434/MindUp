@@ -6,7 +6,6 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        // ALT BARI TAMAMEN KALDIRAN KRİTİK SATIR:
         tabBarStyle: { display: 'none' }, 
       }}>
       <Tabs.Screen
@@ -15,7 +14,7 @@ export default function TabLayout() {
           title: 'Home',
         }}
       />
-      {/* Explore ekranını navigasyondan tamamen gizliyoruz */}
+      
       <Tabs.Screen
         name="explore"
         options={{

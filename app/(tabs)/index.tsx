@@ -67,19 +67,19 @@ export default function HomeScreen() {
     return (
       <LinearGradient colors={['#6c5ce7', '#a29bfe']} style={styles.splashContainer}>
         <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
-          {/* İkonu 'bulb-outline' yerine 'rocket' yaptık */}
+
           <Ionicons name="rocket" size={100} color="white" /> 
           
           <Text style={styles.splashTitle}>MindUp</Text>
           
-          {/* Sloganı daha havalı bir şeyle değiştirdik */}
-          <Text style={styles.splashSubtitle}>Kafana odaklan!</Text>
+          
+          <Text style={styles.splashSubtitle}>Zihnine odaklan!</Text>
         </Animated.View>
       </LinearGradient>
     );
   }
 
-  // 2. ADIM: Kazanan Ekranı
+  
   // Kazanan Ekranı Bölümü
 if (isGameOver) {
   const winnerName = totalScores.t1 > totalScores.t2 ? (teams.t1 || "Takım 1") : (teams.t2 || "Takım 2");
@@ -87,7 +87,7 @@ if (isGameOver) {
 
   return (
     <LinearGradient colors={['#1e272e', '#485460']} style={styles.fullCenter}>
-      {/* BAŞLIK: Takım modunda "OYUN SONUCU", bireysel modda "TEBRİKLER" */}
+      
       <Text style={styles.finalTitle}>
         {isTeamMode ? t.final : (language === 'tr' ? "OYUN BİTTİ" : "GAME OVER")}
       </Text>
@@ -105,7 +105,7 @@ if (isGameOver) {
           </View>
         </>
       ) : (
-        // --- BİREYSEL MOD GÖRÜNÜMÜ (Takım yazıları tamamen kaldırıldı) ---
+        // --- BİREYSEL MOD GÖRÜNÜMÜ ---
         <>
           <Text style={styles.winnerName}>
             {(language === 'tr' ? "TOPLAM SKOR" : "TOTAL SCORE")}
@@ -132,7 +132,7 @@ if (isGameOver) {
   );
 }
 
-  // 3. ADIM: Oyun Ekranı
+  // Oyun Ekranı
   if (selectedCategory) {
     return (
       <GameScreen 
@@ -157,7 +157,7 @@ if (isGameOver) {
     );
   }
 
-  // 4. ADIM: Ana Kategori Seçim Ekranı
+  // Ana Kategori Seçim Ekranı
   return (
     <LinearGradient colors={['#1e272e', '#485460']} style={{flex: 1}}>
       <SafeAreaView style={styles.container}>
@@ -247,15 +247,15 @@ const styles = StyleSheet.create({
   scoreDetail: { color: 'white', fontSize: 20 },
   bigBtn: { backgroundColor: '#6c5ce7', paddingVertical: 15, paddingHorizontal: 40, borderRadius: 30 },
   splashTitle: { 
-    fontSize: 55, // Biraz daha büyüttük
+    fontSize: 55, 
     fontWeight: '900', 
     color: 'white', 
     marginTop: 20, 
-    letterSpacing: 4, // Harfleri birbirinden ayırarak premium bir hava kattık
-    textShadowColor: 'rgba(0, 0, 0, 0.3)', // Hafif bir gölge derinlik katar
+    letterSpacing: 4, 
+    textShadowColor: 'rgba(0, 0, 0, 0.3)', 
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 10,
-    fontFamily: 'System', // Cihazın en iyi sans-serif fontunu kullanır
+    fontFamily: 'System', 
   },
   
   splashSubtitle: { 
