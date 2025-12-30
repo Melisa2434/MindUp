@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
@@ -14,10 +15,15 @@ interface Props {
 export default function CategoryScreen({ lang, onSelectCategory, headerComponent }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newWords, setNewWords] = useState('');
+  const [duration, setDuration] = useState('60');
 
-  useEffect(() => { loadCategories(); }, []);
+  useEffect(() => { 
+    loadCategories(); 
+    AsyncStorage.getItem('game_duration').then(d => d && setDuration(d));
+  }, []);
 
   const loadCategories = async () => {
     const saved = await AsyncStorage.getItem('custom_categories');
@@ -41,9 +47,14 @@ export default function CategoryScreen({ lang, onSelectCategory, headerComponent
     loadCategories();
   };
 
+  const saveSettings = async () => {
+    await AsyncStorage.setItem('game_duration', duration);
+    setSettingsVisible(false);
+  };
+
   const t = { 
-    tr: { cat: 'Kategoriler', add: 'Kategori Ekle', save: 'Kaydet', ph: 'Ad', wp: 'Kelimeler (virgül ile)' }, 
-    en: { cat: 'Categories', add: 'Add Category', save: 'Save', ph: 'Name', wp: 'Words (with comma)' } 
+    tr: { cat: 'Kategoriler', add: 'Kategori Ekle', save: 'Kaydet', ph: 'Ad', wp: 'Kelimeler (virgül ile)', dur: 'Süre (sn)' }, 
+    en: { cat: 'Categories', add: 'Add Category', save: 'Save', ph: 'Name', wp: 'Words (with comma)', dur: 'Duration (sec)' } 
   }[lang];
 
   return (
@@ -58,9 +69,14 @@ export default function CategoryScreen({ lang, onSelectCategory, headerComponent
             {headerComponent}
             <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingRight: 20}}>
               <Text style={styles.headerTitle}>{t.cat}</Text>
-              <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addMiniBtn}>
-                <Text style={{color:'white', fontWeight:'bold', fontSize: 12}}>{t.add}</Text>
-              </TouchableOpacity>
+              <View style={{flexDirection: 'row', gap: 10}}>
+                <TouchableOpacity onPress={() => setSettingsVisible(true)} style={styles.addMiniBtn}>
+                  <Ionicons name="settings-sharp" size={16} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addMiniBtn}>
+                  <Text style={{color:'white', fontWeight:'bold', fontSize: 12}}>{t.add}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         }
@@ -81,6 +97,19 @@ export default function CategoryScreen({ lang, onSelectCategory, headerComponent
             <View style={{flexDirection:'row', justifyContent:'space-between'}}>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalBtn}><Text>X</Text></TouchableOpacity>
               <TouchableOpacity onPress={handleAddCategory} style={[styles.modalBtn, {backgroundColor:'#6c5ce7'}]}><Text style={{color:'white'}}>{t.save}</Text></TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={settingsVisible} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={{color:'white', fontSize:18, fontWeight:'bold', marginBottom:15}}>{t.dur}</Text>
+            <TextInput style={styles.input} keyboardType="numeric" value={duration} onChangeText={setDuration} />
+            <View style={{flexDirection:'row', justifyContent:'space-between'}}>
+              <TouchableOpacity onPress={() => setSettingsVisible(false)} style={styles.modalBtn}><Text>X</Text></TouchableOpacity>
+              <TouchableOpacity onPress={saveSettings} style={[styles.modalBtn, {backgroundColor:'#6c5ce7'}]}><Text style={{color:'white'}}>{t.save}</Text></TouchableOpacity>
             </View>
           </View>
         </View>

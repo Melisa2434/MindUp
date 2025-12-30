@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -23,6 +24,7 @@ export default function GameScreen({ category, lang, onQuit, teamMode, initialTo
   const [isPaused, setIsPaused] = useState(false);
   const [count, setCount] = useState(3);
   const [timer, setTimer] = useState(60);
+  const [gameDuration, setGameDuration] = useState(60);
   const [wordIndex, setWordIndex] = useState(0);
   const [turn, setTurn] = useState<'t1' | 't2'>('t1');
   const [roundHistory, setRoundHistory] = useState<{word: string, result: 'correct' | 'pass'}[]>([]);
@@ -82,6 +84,16 @@ export default function GameScreen({ category, lang, onQuit, teamMode, initialTo
       
       // Kelimeleri karıştır
       setShuffledWords([...category.words[lang]].sort(() => Math.random() - 0.5));
+
+      // Süreyi yükle
+      const savedDur = await AsyncStorage.getItem('game_duration');
+      if (savedDur) {
+        const d = parseInt(savedDur);
+        if (!isNaN(d)) {
+          setGameDuration(d);
+          setTimer(d);
+        }
+      }
     } catch (error) {
       console.log("Navigasyon ayarları yüklenirken hata oluştu:", error);
     }
@@ -143,7 +155,7 @@ export default function GameScreen({ category, lang, onQuit, teamMode, initialTo
     if (!teamMode.isTeamMode) onRoundComplete(currentScores, 1, true);
     else {
       if (turn === 't1') {
-        setTurn('t2'); setRoundHistory([]); setTimer(60); setCount(3); setWordIndex(0); setGameState('countdown');
+        setTurn('t2'); setRoundHistory([]); setTimer(gameDuration); setCount(3); setWordIndex(0); setGameState('countdown');
       } else {
         onRoundComplete(currentScores, initialRound + 1, initialRound === teamMode.maxRounds);
       }
