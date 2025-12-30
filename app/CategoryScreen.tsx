@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
-import { FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Category } from './(tabs)/index';
 import wordData from './words.json';
 
@@ -19,6 +19,7 @@ export default function CategoryScreen({ lang, onSelectCategory, headerComponent
   const [newTitle, setNewTitle] = useState('');
   const [newWords, setNewWords] = useState('');
   const [duration, setDuration] = useState('60');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => { 
     loadCategories(); 
@@ -30,6 +31,12 @@ export default function CategoryScreen({ lang, onSelectCategory, headerComponent
     const customCats = saved ? JSON.parse(saved) : [];
     const staticCats = (wordData as any).categories as Category[];
     setCategories([...staticCats, ...customCats]);
+    
+    // API'den kategori çekmek isterseniz burayı kullanabilirsiniz:
+    // fetch('https://api.example.com/categories')
+    //   .then(res => res.json())
+    //   .then(data => setCategories(data))
+    //   .catch(err => console.log(err));
   };
 
   const handleAddCategory = async () => {
@@ -52,9 +59,35 @@ export default function CategoryScreen({ lang, onSelectCategory, headerComponent
     setSettingsVisible(false);
   };
 
+  const fetchWordsFromApi = async () => {
+    if (!newTitle.trim()) return;
+
+    setIsLoading(true);
+    try {
+      // Pollinations.ai (API Anahtarı gerektirmeyen ücretsiz AI servisi)
+      const prompt = lang === 'tr' 
+        ? `Tabu oyunu için "${newTitle}" kategorisine uygun, popüler 15 kelimeyi sadece virgülle ayırarak yaz. Başlık, numara veya açıklama ekleme. Sadece kelimeler.`
+        : `List 15 popular words for the category "${newTitle}" suitable for the game Taboo, separated by commas only. No numbering, no extra text.`;
+
+      // GET isteği ile doğrudan prompt gönderiyoruz
+      const response = await fetch(`https://text.pollinations.ai/${encodeURIComponent(prompt)}`);
+
+      if (!response.ok) throw new Error('AI servisine erişilemedi.');
+      
+      const text = await response.text();
+      if (text) setNewWords(text.trim());
+      else Alert.alert('Sonuç Yok', 'Kelime üretilemedi.');
+    } catch (error: any) {
+      console.error(error);
+      Alert.alert('Hata', 'Kelime üretilirken bir sorun oluştu. İnternet bağlantınızı kontrol edin.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const t = { 
-    tr: { cat: 'Kategoriler', add: 'Kategori Ekle', save: 'Kaydet', ph: 'Ad', wp: 'Kelimeler (virgül ile)', dur: 'Süre (sn)' }, 
-    en: { cat: 'Categories', add: 'Add Category', save: 'Save', ph: 'Name', wp: 'Words (with comma)', dur: 'Duration (sec)' } 
+    tr: { cat: 'Kategoriler', add: 'Kategori Ekle', save: 'Kaydet', ph: 'Kategori Adı', wp: 'Kelimeler (virgül ile)', dur: 'Süre (sn)', gen: 'AI ile Bul' }, 
+    en: { cat: 'Categories', add: 'Add Category', save: 'Save', ph: 'Category Name', wp: 'Words (with comma)', dur: 'Duration (sec)', gen: 'Generate AI' } 
   }[lang];
 
   return (
@@ -92,7 +125,13 @@ export default function CategoryScreen({ lang, onSelectCategory, headerComponent
       <Modal visible={modalVisible} transparent={true} animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <TextInput style={styles.input} placeholder={t.ph} value={newTitle} onChangeText={setNewTitle} />
+            <View style={{flexDirection: 'row', gap: 10, marginBottom: 15}}>
+              <TextInput style={[styles.input, {flex: 1, marginBottom: 0}]} placeholder={t.ph} value={newTitle} onChangeText={setNewTitle} />
+              <TouchableOpacity onPress={fetchWordsFromApi} style={styles.apiBtn} disabled={isLoading}>
+                {isLoading ? <ActivityIndicator color="white" size="small" /> : <Ionicons name="sparkles" size={20} color="white" />}
+              </TouchableOpacity>
+            </View>
+            
             <TextInput style={[styles.input, {height: 80}]} placeholder={t.wp} multiline value={newWords} onChangeText={setNewWords} />
             <View style={{flexDirection:'row', justifyContent:'space-between'}}>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalBtn}><Text>X</Text></TouchableOpacity>
@@ -127,5 +166,6 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
   modalBox: { backgroundColor: '#2f3542', width: '85%', padding: 25, borderRadius: 20, borderWidth: 1, borderColor: '#57606f' },
   input: { backgroundColor: 'white', borderRadius: 10, padding: 12, marginBottom: 15 },
-  modalBtn: { padding: 12, borderRadius: 10, backgroundColor: '#dcdde1', minWidth: 80, alignItems: 'center' }
+  modalBtn: { padding: 12, borderRadius: 10, backgroundColor: '#dcdde1', minWidth: 80, alignItems: 'center' },
+  apiBtn: { backgroundColor: '#e17055', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 15, borderRadius: 10 }
 });
