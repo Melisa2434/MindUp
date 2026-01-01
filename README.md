@@ -25,3 +25,5 @@ MindUp, arkadaşlarınızla veya tek başınıza oynayabileceğiniz, ivmeölçer
 3. Bağımlılıkları yükleyin:
    ```bash
    npm install
+
+**Toplam Commit Sayısı:** 20
